@@ -2,6 +2,7 @@ version: '2'
 
 services:
   lambda:
+    command: true
     build:
       context: ../../
       dockerfile: docker/test/Dockerfile

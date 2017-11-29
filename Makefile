@@ -1,12 +1,12 @@
 # Project variables
 export PROJECT_NAME ?= lambda-ecs-tasks
-
-# Parameters
 export FUNCTION_NAME ?= ecsTasks
-S3_BUCKET ?= 429614120872-cfn-lambda
-AWS_DEFAULT_REGION ?= us-west-2
+S3_BUCKET ?= 334274607422-cfn-lambda
+AWS_DEFAULT_REGION ?= us-east-1
+ENV ?= nil
 
 include Makefile.settings
+-include .env/$(ENV)
 
 .PHONY: test build publish clean
 
