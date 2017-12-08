@@ -8,7 +8,10 @@ ENV ?= nil
 include Makefile.settings
 -include .env/$(ENV)
 
-.PHONY: test build publish clean
+.PHONY: all orchestrate clean build publish
+all:
+	# do nothing
+orchestrate: build publish clean
 
 test:
 	@ ${INFO} "Creating lambda build..."
