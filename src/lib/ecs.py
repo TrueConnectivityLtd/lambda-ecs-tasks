@@ -35,23 +35,16 @@ class EcsTaskManager:
     func = partial(self.client.list_container_instances,cluster=cluster)
     return paginated_response(func, 'containerInstanceArns')
 
-  def start_task(self, cluster, task_definition, overrides, count, started_by, instances):
-    if instances:
-      return self.client.start_task(
-        cluster=cluster, 
-        taskDefinition=task_definition, 
-        overrides=overrides, 
-        containerInstances=instances, 
-        startedBy=started_by
-      )
+  def start_task(self, **kwargs):
+    if kwargs.get('containerInstances') and kwargs.get('launchType') != 'EC2':
+      raise ValueError("You must specify a launch type of EC2 when specifying container instances")
+    if kwargs.get('containerInstances'):
+      kwargs.pop('launchType',None)
+      kwargs.pop('platformVersion',None)
+      return self.client.start_task(**kwargs)
     else:
-      return self.client.run_task(
-        cluster=cluster, 
-        taskDefinition=task_definition, 
-        overrides=overrides, 
-        count=count, 
-        startedBy=started_by
-      )
+      kwargs.pop('containerInstances',None)
+      return self.client.run_task(**kwargs)
 
   def describe_tasks(self, cluster, tasks):
     return self.client.describe_tasks(cluster=cluster, tasks=tasks)

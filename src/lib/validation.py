@@ -1,4 +1,4 @@
-from voluptuous import Required, All, Any, Range, Schema, Length, Coerce, Boolean
+from voluptuous import Required, All, Any, Range, Schema, Length, Coerce, Boolean, In
 
 # For Overrides, which must specify all values as strings
 def DictToString(value):
@@ -35,6 +35,9 @@ def get_cfn_validator():
   Required('PollInterval', default=10): All(Coerce(int), Range(min=10, max=60)),
   Required('Overrides', default=dict()): All(DictToString),
   Required('Instances', default=list()): All(list, Length(max=10)),
+  Required('LaunchType', default='EC2'): All(str, In(['EC2','FARGATE'])),
+  Required('PlatformVersion', default='1.0.0'): All(str),
+  Required('NetworkConfiguration', default={}): All(dict)
 }, extra=True)
 
 # Validation Helper

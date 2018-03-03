@@ -33,11 +33,14 @@ cfn_mgr = CfnManager()
 def start(task):
   return task_mgr.start_task(
     cluster=task['Cluster'],
-    task_definition=task['TaskDefinition'],
+    taskDefinition=task['TaskDefinition'],
     overrides=task['Overrides'],
     count=task['Count'],
-    instances=task['Instances'],
-    started_by=task['StartedBy']
+    containerInstances=task['Instances'],
+    startedBy=task['StartedBy'],
+    platformVersion=task['PlatformVersion'],
+    launchType=task['LaunchType'],
+    networkConfiguration=task['NetworkConfiguration']
   )
 
 # Outputs JSON
