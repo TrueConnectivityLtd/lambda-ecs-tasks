@@ -1,7 +1,7 @@
 # Project variables
 export PROJECT_NAME ?= lambda-ecs-tasks
 export FUNCTION_NAME ?= ecsTasks
-S3_BUCKET ?= 334274607422-cfn-lambda
+S3_BUCKET ?= casebookplatform-code-artifacts
 AWS_DEFAULT_REGION ?= us-east-1
 ENV ?= nil
 
@@ -34,10 +34,10 @@ build:
 	@ ${INFO} "Built build/$(FUNCTION_NAME).zip"
 
 publish:
-	@ ${INFO} "Publishing $(FUNCTION_NAME).zip to s3://$(S3_BUCKET)..."
-	@ aws s3 cp --quiet build/$(FUNCTION_NAME).zip s3://$(S3_BUCKET)
-	@ ${INFO} "Published to S3 URL: https://s3.amazonaws.com/$(S3_BUCKET)/$(FUNCTION_NAME).zip"
-	@ ${INFO} "S3 Object Version: $(S3_OBJECT_VERSION)"
+	${INFO} "Publishing $(FUNCTION_NAME).zip to s3://$(S3_BUCKET)/$(FUNCTION_NAME)..."
+	@ aws s3 cp build/$(FUNCTION_NAME).zip s3://$(S3_BUCKET)/$(FUNCTION_NAME)/$(FUNCTION_NAME).zip --metadata '{"version":"$(APP_VERSION)"}'
+	${INFO} "Published to S3 URL: https://s3.amazonaws.com/$(S3_BUCKET)/$(FUNCTION_NAME)/$(FUNCTION_NAME).zip"
+	${INFO} "S3 Object Version: $$(eval $(S3_OBJECT_VERSION))"
 
 clean:
 	${INFO} "Destroying build environment..."
