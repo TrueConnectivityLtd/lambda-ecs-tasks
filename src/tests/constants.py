@@ -12,37 +12,37 @@ RESOURCE_TYPE = 'Custom::LogGroup'
 FUNCTION_NAME = 'cfnEcsTasks'
 FUNCTION_ARN = 'arn:aws:lambda:%s:%s:function:%s-%s' % (AWS_REGION, AWS_ACCOUNT_ID, STACK_NAME, FUNCTION_NAME)
 CLUSTER_NAME = 'my-stack-ApplicationCluster'
-OLD_TASK_DEFINITION_ARN = u'arn:aws:ecs:%s:%s:task-definition/my-stack-AdhocTaskDefinition:1' % (AWS_REGION, AWS_ACCOUNT_ID)
-NEW_TASK_DEFINITION_ARN = u'arn:aws:ecs:%s:%s:task-definition/my-stack-AdhocTaskDefinition:2' % (AWS_REGION, AWS_ACCOUNT_ID)
+OLD_TASK_DEFINITION_ARN = 'arn:aws:ecs:%s:%s:task-definition/my-stack-AdhocTaskDefinition:1' % (AWS_REGION, AWS_ACCOUNT_ID)
+NEW_TASK_DEFINITION_ARN = 'arn:aws:ecs:%s:%s:task-definition/my-stack-AdhocTaskDefinition:2' % (AWS_REGION, AWS_ACCOUNT_ID)
 MEMORY_LIMIT = '128'
 STACK_ID = 'arn:aws:cloudformation:%s:%s:stack/%s/%s' % (AWS_REGION, AWS_ACCOUNT_ID, STACK_NAME, str(uuid4()))
 LOGICAL_RESOURCE_ID = 'MyEcsTask'
 PHYSICAL_RESOURCE_ID = 'arn:aws:ecs:%s:%s:task/96052dc0-a646-4068-86d5-4c947b9a88b5' % (AWS_REGION, AWS_ACCOUNT_ID)
-OLD_DB_HOST = u'my-old-app-db.example.org'
-NEW_DB_HOST = u'my-new-app-db.example.org'
+OLD_DB_HOST = 'my-old-app-db.example.org'
+NEW_DB_HOST = 'my-new-app-db.example.org'
 UTC = datetime.datetime.utcnow()
 NOW = int(time.time())
 UPDATE_CRITERIA = [{'Container': 'app', 'EnvironmentKeys':['DB_HOST']}]
 OLD_TASK_DEFINITION_RESULT = {
-  u'taskDefinition': {
-    u'status': u'ACTIVE',
-    u'family': u'my-stack-AdhocTaskDefinition', 
-    u'containerDefinitions': [{
-      u'memoryReservation': 100, 
-      u'name': u'app', 
-      u'command': [], 
-      u'image': u'%s.dkr.ecr.%s.amazonaws.com/org/my-app:latest' % (AWS_ACCOUNT_ID,AWS_REGION), 
-      u'cpu': 0, 
-      u'environment': [
-        { u'name': u'DB_HOST', u'value': OLD_DB_HOST }
+  'taskDefinition': {
+    'status': 'ACTIVE',
+    'family': 'my-stack-AdhocTaskDefinition', 
+    'containerDefinitions': [{
+      'memoryReservation': 100, 
+      'name': 'app', 
+      'command': [], 
+      'image': '%s.dkr.ecr.%s.amazonaws.com/org/my-app:latest' % (AWS_ACCOUNT_ID,AWS_REGION), 
+      'cp': 0, 
+      'environment': [
+        { 'name': 'DB_HOST', 'value': OLD_DB_HOST }
       ], 
-      u'essential': True, 
+      'essential': True, 
     }], 
-    u'volumes': [], 
-    u'taskDefinitionArn': OLD_TASK_DEFINITION_ARN, 
-    u'revision': 1
+    'volumes': [], 
+    'taskDefinitionArn': OLD_TASK_DEFINITION_ARN, 
+    'revision': 1
   }, 
-  u'ResponseMetadata': {}
+  'ResponseMetadata': {}
 }
 NEW_TASK_DEFINITION_RESULT = copy.deepcopy(OLD_TASK_DEFINITION_RESULT)
 NEW_TASK_DEFINITION_RESULT['taskDefinition']['containerDefinitions'][0]['environment'][0]['value'] = NEW_DB_HOST
@@ -53,23 +53,23 @@ TASK_DEFINITION_RESULTS={
 }
 
 START_TASK_RESULT = {
-  u'tasks': [{
-    u'taskArn': PHYSICAL_RESOURCE_ID,
-    u'group': 'family:my-stack-ApplicationTaskDefinition',
-    u'overrides': {u'containerOverrides': [{u'name': 'app'}]},
-    u'lastStatus': 'PENDING',
-    u'containerInstanceArn': 'arn:aws:ecs:%s:%s:container-instance/7de72b16-8e6d-4a22-9317-8c74f15d3382' % (AWS_REGION, AWS_ACCOUNT_ID),
-    u'createdAt': UTC,
-    u'version': 1,
-    u'clusterArn': 'arn:aws:ecs:%s:%s:cluster/%s' % (AWS_REGION, AWS_ACCOUNT_ID, CLUSTER_NAME),
-    u'desiredStatus': 'RUNNING',
-    u'taskDefinitionArn': OLD_TASK_DEFINITION_ARN,
-    u'containers': [
+  'tasks': [{
+    'taskArn': PHYSICAL_RESOURCE_ID,
+    'group': 'family:my-stack-ApplicationTaskDefinition',
+    'overrides': {'containerOverrides': [{'name': 'app'}]},
+    'lastStatus': 'PENDING',
+    'containerInstanceArn': 'arn:aws:ecs:%s:%s:container-instance/7de72b16-8e6d-4a22-9317-8c74f15d3382' % (AWS_REGION, AWS_ACCOUNT_ID),
+    'createdAt': UTC,
+    'version': 1,
+    'clusterArn': 'arn:aws:ecs:%s:%s:cluster/%s' % (AWS_REGION, AWS_ACCOUNT_ID, CLUSTER_NAME),
+    'desiredStatus': 'RUNNING',
+    'taskDefinitionArn': OLD_TASK_DEFINITION_ARN,
+    'containers': [
       {
-        u'containerArn': 'arn:aws:ecs:%s:%s:container/93e604ca-7291-4573-beaa-59a4b439fdc3' % (AWS_REGION, AWS_ACCOUNT_ID),
-        u'taskArn': 'arn:aws:ecs:%s:%s:task/96052dc0-a646-4068-86d5-4c947b9a88b5' % (AWS_REGION, AWS_ACCOUNT_ID),
-        u'lastStatus': 'PENDING',
-        u'name': 'app'
+        'containerArn': 'arn:aws:ecs:%s:%s:container/93e604ca-7291-4573-beaa-59a4b439fdc3' % (AWS_REGION, AWS_ACCOUNT_ID),
+        'taskArn': 'arn:aws:ecs:%s:%s:task/96052dc0-a646-4068-86d5-4c947b9a88b5' % (AWS_REGION, AWS_ACCOUNT_ID),
+        'lastStatus': 'PENDING',
+        'name': 'app'
       }
     ]
   }],

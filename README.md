@@ -16,7 +16,7 @@ When creating a Lambda function, you need to specify the correct module and corr
 
 ## Build Instructions
 
-Any dependencies need to defined in `src/requirements.txt`.  Note that you do not need to include `boto3`, as this is provided by AWS for Python Lambda functions.
+This function requires Python 3.6.  Any dependencies need to defined in `src/requirements.txt`.  Note that you do not need to include `boto3`, as this is provided by AWS for Python Lambda functions.
 
 To build the function and its dependencies:
 

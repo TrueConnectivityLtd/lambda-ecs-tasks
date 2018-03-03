@@ -6,7 +6,7 @@ import datetime
 from dateutil.tz import tzutc
 from uuid import uuid4
 from lib import EcsTaskManager, CfnManager
-from constants import *
+from .constants import *
 
 # Patched create_task module
 @pytest.fixture()
@@ -33,22 +33,22 @@ def check_task():
 @pytest.fixture
 def create_task_event():
   return {
-    u'Cluster': unicode(CLUSTER_NAME),
-    u'TaskDefinition': unicode(OLD_TASK_DEFINITION_ARN),
-    u'Count': 1
+    'Cluster': CLUSTER_NAME,
+    'TaskDefinition': OLD_TASK_DEFINITION_ARN,
+    'Count': 1
   }
 
 @pytest.fixture
 def check_task_event():
   return {
-    u'Cluster': unicode(CLUSTER_NAME),
-    u'TaskDefinition': unicode(OLD_TASK_DEFINITION_ARN),
-    u'Count': 1,
-    u'Status': 'PENDING',
-    u'Tasks': START_TASK_RESULT['tasks'],
-    u'Failures': [],
-    u'CreateTimestamp': UTC.isoformat() + 'Z',
-    u'Timeout': 60
+    'Cluster': CLUSTER_NAME,
+    'TaskDefinition': OLD_TASK_DEFINITION_ARN,
+    'Count': 1,
+    'Status': 'PENDING',
+    'Tasks': START_TASK_RESULT['tasks'],
+    'Failures': [],
+    'CreateTimestamp': UTC.isoformat() + 'Z',
+    'Timeout': 60
   }
 
 # Lambda context mock
@@ -60,7 +60,7 @@ def context():
   context.client_context = None
   context.identity = None
   context.function_name = FUNCTION_NAME
-  context.function_version = u'$LATEST'
+  context.function_version = '$LATEST'
   context.memory_limit_in_mb = MEMORY_LIMIT
   context.get_remaining_time_in_millis.return_value = 300000
   yield context
@@ -117,34 +117,34 @@ def ecs_tasks():
 def create_event():
   import ecs_tasks
   return {
-    u'StackId': unicode(STACK_ID),
-    u'ResponseURL': u'https://cloudformation-custom-resource-response-uswest2.s3-us-west-2.amazonaws.com/arn%3Aaws%3Acloudformation%3Aus-west-2%3A429614120872%3Astack/intake-accelerator-dev/12947b30-d31a-11e6-93df-503acbd4dc61%7CMyLogGroup%7C720958cb-c5b7-4225-b12f-e7c5ab6c499b?AWSAccessKeyId=AKIAI4KYMPPRGIACET5Q&Expires=1483789136&Signature=GoZZ7Leg5xRsKq1hjU%2FO81oeJmw%3D',
-    u'ResourceProperties': {
-      u'ServiceToken': unicode(FUNCTION_ARN),
-      u'Cluster': CLUSTER_NAME,
-      u'TaskDefinition': OLD_TASK_DEFINITION_ARN
+    'StackId': STACK_ID,
+    'ResponseURL': 'https://cloudformation-custom-resource-response-uswest2.s3-us-west-2.amazonaws.com/arn%3Aaws%3Acloudformation%3Aus-west-2%3A429614120872%3Astack/intake-accelerator-dev/12947b30-d31a-11e6-93df-503acbd4dc61%7CMyLogGroup%7C720958cb-c5b7-4225-b12f-e7c5ab6c499b?AWSAccessKeyId=AKIAI4KYMPPRGIACET5Q&Expires=1483789136&Signature=GoZZ7Leg5xRsKq1hjU%2FO81oeJmw%3D',
+    'ResourceProperties': {
+      'ServiceToken': FUNCTION_ARN,
+      'Cluster': CLUSTER_NAME,
+      'TaskDefinition': OLD_TASK_DEFINITION_ARN
     },
-    u'ResourceType': unicode(RESOURCE_TYPE),
-    u'RequestType': u'Create',
+    'ResourceType': RESOURCE_TYPE,
+    'RequestType': 'Create',
     'CreationTime': NOW,
-    u'ServiceToken': unicode(FUNCTION_ARN),
-    u'RequestId': unicode(REQUEST_ID),
-    u'LogicalResourceId': unicode(LOGICAL_RESOURCE_ID),
-    u'Status': 'SUCCESS',
-    u'PhysicalResourceId': ecs_tasks.get_task_id(STACK_ID,LOGICAL_RESOURCE_ID)
+    'ServiceToken': FUNCTION_ARN,
+    'RequestId': REQUEST_ID,
+    'LogicalResourceId': LOGICAL_RESOURCE_ID,
+    'Status': 'SUCCESS',
+    'PhysicalResourceId': ecs_tasks.get_task_id(STACK_ID,LOGICAL_RESOURCE_ID)
   }
 
 # CFN Update Request
 @pytest.fixture
 def update_event():
   event = create_event()
-  event[u'RequestType'] = u'Update'
-  event[u'PhysicalResourceId'] = unicode(PHYSICAL_RESOURCE_ID)
-  event[u'OldResourceProperties'] = {
-    u'Destroy': u'false', 
-    u'ServiceToken': unicode(FUNCTION_ARN),
-    u'Cluster': unicode(CLUSTER_NAME),
-    u'TaskDefinition': OLD_TASK_DEFINITION_ARN
+  event['RequestType'] = 'Update'
+  event['PhysicalResourceId'] = PHYSICAL_RESOURCE_ID
+  event['OldResourceProperties'] = {
+    'Destroy': 'false', 
+    'ServiceToken': FUNCTION_ARN,
+    'Cluster': CLUSTER_NAME,
+    'TaskDefinition': OLD_TASK_DEFINITION_ARN
   }
   return event
 
@@ -152,8 +152,8 @@ def update_event():
 @pytest.fixture
 def delete_event():
   event = create_event()
-  event[u'RequestType'] = u'Delete'
-  event[u'PhysicalResourceId'] = unicode(PHYSICAL_RESOURCE_ID)
+  event['RequestType'] = 'Delete'
+  event['PhysicalResourceId'] = PHYSICAL_RESOURCE_ID
   return event
 
 # Generates each handler with corresponding event

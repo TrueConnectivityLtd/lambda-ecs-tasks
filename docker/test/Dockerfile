@@ -4,18 +4,17 @@ ARG project_name
 LABEL application=${project_name}
 
 # Install build dependencies
-RUN yum install python27-pip zip -y && \
-    pip install -U pip
+RUN yum install python36-pip zip -y
 
 # Copy requirements
 COPY src/requirements* /build/src/
 
 # Install test dependencies
-RUN pip install -r /build/src/requirements_test.txt
+RUN pip-3.6 install -r /build/src/requirements_test.txt
 
 # Install function dependencies
 WORKDIR /build/src
-RUN pip install -t vendor/ -r requirements.txt --upgrade
+RUN pip-3.6 install -t vendor/ -r requirements.txt --upgrade
 
 # Create function archive
 COPY src /build/src

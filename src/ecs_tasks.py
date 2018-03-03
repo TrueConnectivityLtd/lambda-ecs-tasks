@@ -51,7 +51,7 @@ def to_dict(items, key, value):
 # Creates a fixed length consist ID based from a given stack ID and resource IC
 def get_task_id(stack_id, resource_id):
   m = md5()
-  m.update(stack_id + resource_id)
+  m.update((stack_id + resource_id).encode('utf-8'))
   return m.hexdigest()
 
 # Gets ECS task definition and returns environment variable values for a given set of update criteria

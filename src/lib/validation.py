@@ -1,29 +1,11 @@
-from voluptuous import Required, All, Any, Range, Schema, Length
-
-def ToInt(value):
-  if isinstance(value, int):
-    return value
-  if isinstance(value, basestring) and value.isdigit():
-    return int(value)
-  else:
-    raise ValueError
-
-def ToBool(value):
-  if isinstance(value, bool):
-    return value
-  if isinstance(value, basestring) and value.lower() in ['true','yes']:
-    return True
-  if isinstance(value, basestring) and value.lower() in ['false','no']:
-    return False
-  else:
-    raise ValueError
+from voluptuous import Required, All, Any, Range, Schema, Length, Coerce, Boolean
 
 # For Overrides, which must specify all values as strings
 def DictToString(value):
   def string_values(node):
     if type(node) is dict:
       result={}
-      for k,v in node.iteritems():
+      for k,v in node.items():
         result[k] = string_values(v)
     elif type(node) is list:
       result=[]
@@ -40,17 +22,17 @@ def DictToString(value):
 # Validation Helper
 def get_cfn_validator():
   return Schema({
-  Required('Cluster'): Any(str, unicode),
-  Required('TaskDefinition'): Any(str, unicode),
-  Required('Count', default=1): All(ToInt, Range(min=0, max=10)),
-  Required('RunOnUpdate', default=True): All(ToBool),
+  Required('Cluster'): All(str),
+  Required('TaskDefinition'): All(str),
+  Required('Count', default=1): All(Coerce(int), Range(min=0, max=10)),
+  Required('RunOnUpdate', default=True): All(Boolean()),
   Required('UpdateCriteria', default=[]): All([Schema({
-    Required('Container'): Any(str, unicode),
+    Required('Container'): All(str),
     Required('EnvironmentKeys'): All(list)
   })]),
-  Required('RunOnRollback', default=True): All(ToBool),
-  Required('Timeout', default=290): All(ToInt, Range(min=0, max=3600)),
-  Required('PollInterval', default=10): All(ToInt, Range(min=10, max=60)),
+  Required('RunOnRollback', default=True): All(Boolean()),
+  Required('Timeout', default=290): All(Coerce(int), Range(min=0, max=3600)),
+  Required('PollInterval', default=10): All(Coerce(int), Range(min=10, max=60)),
   Required('Overrides', default=dict()): All(DictToString),
   Required('Instances', default=list()): All(list, Length(max=10)),
 }, extra=True)
@@ -58,16 +40,16 @@ def get_cfn_validator():
 # Validation Helper
 def get_ecs_validator():
   return Schema({
-  Required('Cluster'): Any(str, unicode),
-  Required('TaskDefinition'): Any(str, unicode),
-  Required('Count', default=1): All(ToInt, Range(min=1, max=10)),
+  Required('Cluster'): All(str),
+  Required('TaskDefinition'): All(str),
+  Required('Count', default=1): All(Coerce(int), Range(min=1, max=10)),
   Required('Overrides', default=dict()): All(DictToString),
   Required('Instances', default=list()): All(list, Length(max=10)),
   Required('Tasks', default=list()): All(list),
-  Required('Status', default=''): Any(str, unicode),
-  Required('StartedBy', default='admin'): Any(str, unicode),
-  Required('Timeout', default=3600): All(ToInt, Range(min=60, max=604800)),
-  Required('Poll', default=10): All(ToInt, Range(min=10, max=3600))
+  Required('Status', default=''): All(str),
+  Required('StartedBy', default='admin'): All(str),
+  Required('Timeout', default=3600): All(Coerce(int), Range(min=60, max=604800)),
+  Required('Poll', default=10): All(Coerce(int), Range(min=10, max=3600))
 }, extra=True)
 
 # Validation Helper
