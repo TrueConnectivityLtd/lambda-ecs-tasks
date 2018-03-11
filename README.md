@@ -32,6 +32,7 @@ Note that the required permissions for this function include:
 - Describe, run, start and stop ECS tasks
 - Publish logs to CloudWatch logs
 - Check ELB target group health (required if the `TargetGroupHealthCheck` property is configured)
+- IAM pass role permissions to when launching ECS tasks that have IAM roles attached
 
 ```
 ...
@@ -90,6 +91,11 @@ Resources:
               - cloudformation:DescribeStacks
             Resource:
               Fn::Sub: arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/${AWS::StackId}
+          - Sid: PassRole
+              Effect: Allow
+              Action:
+              - iam:PassRole
+              Resource: "*"
           - Sid: InvokeSelf
             Effect: Allow
             Action:
