@@ -198,7 +198,9 @@ The following custom resource executes a task on Fargate.
               - migrate
 ```
 
-The following table describes the various properties:
+### Configuration Reference
+
+The following table describes the various properties that you can define in your custom resourc econfiguration:
 
 | Property               | Description                                                                                                                                                                                                                                                                                                                                                                                          | Required | Default Value |
 |------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
