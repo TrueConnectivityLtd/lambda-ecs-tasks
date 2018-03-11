@@ -14,6 +14,7 @@ def test_poll_task_completes(ecs_tasks, create_event, context, time):
   # Simulated poll event
   poll_event = create_event
   poll_event['EventState'] = e.value.state  
+  assert poll_event['EventState']['TaskResult'] == RUNNING_TASK_RESULT
   # Process the poll request during which the task will complete
   response = ecs_tasks.handle_poll(poll_event, context)
   assert ecs_tasks.task_mgr.client.run_task.call_count == 1
@@ -50,33 +51,6 @@ def test_poll_task_timeout(ecs_tasks, create_event, context, time, now):
   assert ecs_tasks.task_mgr.client.describe_tasks.call_count == 61
   assert response['Status'] == 'FAILED'
   assert 'The task failed to complete with the specified timeout of 3600 seconds' in response['Reason']
-
-# Test poll request with healthcheck completes
-def test_poll_healthcheck_completes(ecs_tasks, create_event, context, time, now):
-  # The 10000 value will trigger a CfnLambdaExecutionTimeout event
-  context.get_remaining_time_in_millis.side_effect = [20000,10000,20000,20000]
-  create_event['ResourceProperties']['TargetGroupHealthCheck'] = 'arn:aws:some-arn'
-  # Simulated create event
-  with pytest.raises(CfnLambdaExecutionTimeout) as e:
-    response = ecs_tasks.handle_create(create_event, context)
-  # Simulated poll event
-  poll_event = create_event
-  poll_event['EventState'] = e.value.state  
-  # Process the poll request during which the task will complete
-  response = ecs_tasks.handle_poll(poll_event, context)
-  assert ecs_tasks.elb.describe_target_health.call_count == 2
-  assert ecs_tasks.task_mgr.client.run_task.call_count == 1
-  assert ecs_tasks.task_mgr.client.describe_tasks.call_count == 1
-  assert response['Status'] == 'SUCCESS'
-
-# Test target health group check
-def test_run_task_with_healthcheck(ecs_tasks, create_update_handlers, context):
-  handler = getattr(ecs_tasks, create_update_handlers[0])
-  event = create_update_handlers[1]
-  event['ResourceProperties']['TargetGroupHealthCheck'] = 'arn:aws:some-arn'
-  response = handler(event, context)
-  assert ecs_tasks.elb.describe_target_health.call_count == 2
-  assert response['Status'] == 'SUCCESS'
 
 # Test delete request when task is already stopped 
 def test_delete_task_stopped(ecs_tasks, delete_event, context, time):
@@ -195,7 +169,7 @@ def test_run_task_execution_timeout(ecs_tasks, create_update_handlers, context, 
     response = handler(event, context)
     assert ecs_tasks.task_mgr.client.run_task.called
     assert not ecs_tasks.task_mgr.client.describe_tasks.called
-  assert str(START_TASK_RESULT) in e.value.state
+    assert e.value.state['TaskResult'] == START_TASK_RESULT
 
 # Test for ECS task that does not complete within absolute task timeout
 def test_create_new_task_completion_timeout(ecs_tasks, create_update_handlers, context, time, now):

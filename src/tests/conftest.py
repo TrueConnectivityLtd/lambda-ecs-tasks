@@ -97,13 +97,6 @@ def cfn_mgr():
     cfn_mgr.client = client
     yield cfn_mgr
 
-# Patched ELB client
-@pytest.fixture
-def elb_client():
-  with mock.patch('boto3.client') as client:
-    client.describe_target_health.side_effect = [TARGET_HEALTH_INITIAL,TARGET_HEALTH_HEALTHY]
-    yield client
-
 # Patched task manager
 @pytest.fixture
 def ecs_client():
@@ -117,12 +110,11 @@ def ecs_client():
 
 # Patched ecs_tasks module
 @pytest.fixture
-def ecs_tasks(elb_client, ecs_client):
+def ecs_tasks(ecs_client):
   import ecs_tasks
   task_mgr = EcsTaskManager()
   task_mgr.client = ecs_client
   ecs_tasks.task_mgr = task_mgr
-  ecs_tasks.elb = elb_client
   yield ecs_tasks
 
 # CFN Create Request

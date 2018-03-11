@@ -22,7 +22,7 @@ The [`ecs_tasks`](src/ecs_tasks.py) function is designed to be called from a Clo
 
 The following CloudFormation template snippet demonstrates creating the Lambda function, along with supporting CloudWatch Logs and IAM role resources.
 
-> Note this snippet assumes you have an ECS Cluster resource called `ApplicationCluster` and a target group called `ApplicationTargetGroup`, which is used to constrain the IAM privileges assigned to the Lambda function.
+> Note this snippet assumes you have an ECS Cluster resource called `ApplicationCluster`, which is used to constrain the IAM privileges assigned to the Lambda function.
 
 Note that the required permissions for this function include:
 
@@ -31,7 +31,6 @@ Note that the required permissions for this function include:
 - Describe ECS task definitions
 - Describe, run, start and stop ECS tasks
 - Publish logs to CloudWatch logs
-- Check ELB target group health (required if the `TargetGroupHealthCheck` property is configured)
 - IAM pass role permissions to when launching ECS tasks that have IAM roles attached
 
 ```
@@ -79,12 +78,6 @@ Resources:
         PolicyDocument:
           Version: "2012-10-17"
           Statement:
-          - Sid: CheckTargetGroupStatus
-            Effect: Allow
-            Action:
-              - elasticloadbalancing:DescribeTargetHealth
-            Resource:
-              Ref: ApplicationTargetGroup
           - Sid: CheckStackStatus
             Effect: Allow
             Action:
@@ -154,8 +147,6 @@ The following custom resource calls this Lambda function when the resource is cr
         - Container: app
           EnvironmentKeys:              # List of environment keys to compare.  The task is only run if the environment key value has changed.
             - DB_HOST
-      TargetGroupHealthCheck:           # Performs a health check of the specified target group ARN.  
-        Ref: ApplicationTargetGroup     # Task execution will begin once the target group has at least one healthy target
       Overrides:                        # Task definition overrides
         containerOverrides:
           - name: app
@@ -220,7 +211,6 @@ The following table describes the various properties that you can define in your
 | LaunchType             | Optional - specify a value of FARGATE to run the task on Fargate                                                                                                                                                                                                                                                                                                                                     | No       |               |
 | PlatformVersion        | Optional - applies for a launch type of FARGATE only and specifies the Fargate platform version                                                                                                                                                                                                                                                                                                      | No       | 1.0.0         |
 | NetworkConfiguration   | Conditional - required if the launch type is specified as FARGATE.  Defines the networking configuration for the ENI attached to the Fargate task.  See the example configuration for a snippet of the required configuration.                                                                                                                                                                       | No       |               |
-| TargetGroupHealthCheck | Optional ARN of target group to check for healthy targets.  When configured, the task runner will poll the status of the target group until at least one target is healthy, before executing the configure ECS task                                                                                                                                                                                  | No       |               |
 | UpdateCriteria         | Optional list of criteria used to determine if the task should be run for an update to the resource.   If specified, you must configure the `Container` property as the name of a container in the task definition, and specify a list of environment variable keys using the `EnvironmentKey` property.  If any of the specified environment variable values  have changed, then the task will run. | No       |               |
 | Overrides              | Optional task definition overrides to apply to the specified task definition.                                                                                                                                                                                                                                                                                                                        | No       |               |
 | Instances              | Optional list of ECS container instances to run the task on.  If specified, you must use the ARN of each ECS container instance.                                                                                                                                                                                                                                                                     | No       |               |

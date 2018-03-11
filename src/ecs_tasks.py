@@ -31,7 +31,6 @@ log.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 # AWS services
 task_mgr = EcsTaskManager()
 cfn_mgr = CfnManager()
-elb = boto3.client('elbv2')
 
 # Starts an ECS task
 def start(task):
@@ -92,14 +91,12 @@ def poll(task, remaining_time):
   if task['CreationTime'] + task['Timeout'] < int(time.time()):
     raise EcsTaskTimeoutError(task['TaskResult']['tasks'], task['CreationTime'], task['Timeout'])
   if remaining_time() <= 10000:
-    raise CfnLambdaExecutionTimeout('poll(%s, context.get_remaining_time_in_millis)' % task)
+    raise CfnLambdaExecutionTimeout(task)
   task['TaskResult'] = describe_tasks(task['Cluster'], task['TaskResult']['tasks'])
   return task
 
 # Start and poll task
 def start_and_poll(task, remaining_time):
-  if task['TargetGroupHealthCheck']:
-    check_target_health(task,remaining_time)
   task['TaskResult'] = start(task)
   if task['TaskResult'].get('failures'):
     raise EcsTaskFailureError(task['TaskResult'])
@@ -108,7 +105,7 @@ def start_and_poll(task, remaining_time):
     task = poll(task,remaining_time)
     check_exit_codes(task['TaskResult'])
     log.info("Task completed successfully with result: %s" % format_json(task['TaskResult']))
-  return task
+  return next(t['taskArn'] for t in task['TaskResult']['tasks'])
 
 # Create task
 def create_task(event):
@@ -119,24 +116,13 @@ def create_task(event):
   log.info('Received task %s' % format_json(task))
   return task
 
-# Performs a health check on the input target group
-@backoff.on_predicate(backoff.constant, lambda x: not x, interval=5)
-def check_target_health(task, remaining_time):
-  target_group_arn = task['TargetGroupHealthCheck']
-  if remaining_time() <= 10000:
-    log.info("Function about to timeout, raising CfnLambdaExecutionTimeout to trigger reinvocation...")
-    raise CfnLambdaExecutionTimeout('start_and_poll(%s, context.get_remaining_time_in_millis)' % task)
-  else:
-    log.info("Checking target health of target group %s", target_group_arn)
-    result = elb.describe_target_health(TargetGroupArn=target_group_arn)
-    return any(t for t in result['TargetHealthDescriptions'] if t['TargetHealth']['State'] == 'healthy')
-
 # Event handlers
 @handler.poll
 @cfn_error_handler
 def handle_poll(event, context):
   log.info('Received poll event %s' % str(event))
-  task = eval(event.get('EventState'))
+  task = event.get('EventState')
+  poll(task, context.get_remaining_time_in_millis)
   check_exit_codes(task['TaskResult'])
   log.info("Task completed with result: %s" % task['TaskResult'])
   return {
@@ -150,8 +136,7 @@ def handle_create(event, context):
   log.info('Received create event %s' % str(event))
   task = create_task(event)
   if task['Count'] > 0:
-    task = start_and_poll(task, context.get_remaining_time_in_millis)
-    event['PhysicalResourceId'] = next(t['taskArn'] for t in task['TaskResult']['tasks'])
+    event['PhysicalResourceId'] = start_and_poll(task, context.get_remaining_time_in_millis)
   return event
 
 @handler.update
@@ -171,8 +156,7 @@ def handle_update(event, context):
       new_values = get_task_definition_values(task['TaskDefinition'],update_criteria)
       should_run = old_values != new_values
   if should_run:
-    task = start_and_poll(task, context.get_remaining_time_in_millis)
-    event['PhysicalResourceId'] = next(t['taskArn'] for t in task['TaskResult']['tasks'])  
+    event['PhysicalResourceId'] = start_and_poll(task, context.get_remaining_time_in_millis)
   return event
   
 @handler.delete
