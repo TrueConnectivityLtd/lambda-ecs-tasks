@@ -114,3 +114,31 @@ DESCRIBE_STACKS_RESULT = {
 LIST_TASKS_RESULT = {
   'taskArns': [ PHYSICAL_RESOURCE_ID ]
 }
+
+TARGET_HEALTH_INITIAL = {
+  'TargetHealthDescriptions': [{
+    'Target': {'Id': 'i-067d219b37f6a40de', 'Port': 9200}, 
+    'HealthCheckPort': '9200', 
+    'TargetHealth': {'State': 'initial'}
+  }], 
+  'ResponseMetadata': {
+    'RequestId': '516cee8c-24a4-11e8-aed2-49c862ed6013', 
+    'HTTPStatusCode': 200, 
+    'HTTPHeaders': {'x-amzn-requestid': '516cee8c-24a4-11e8-aed2-49c862ed6013', 'content-type': 'text/xml', 'content-length': '623', 'date': 'Sat, 10 Mar 2018 20:47:59 GMT'}, 
+    'RetryAttempts': 0
+  }
+}
+
+TARGET_HEALTH_HEALTHY = {
+  'TargetHealthDescriptions': [{
+    'Target': {'Id': 'i-067d219b37f6a40de', 'Port': 9200}, 
+    'HealthCheckPort': '9200', 
+    'TargetHealth': {'State': 'healthy'}
+  }], 
+  'ResponseMetadata': {
+    'RequestId': '516cee8c-24a4-11e8-aed2-49c862ed6013', 
+    'HTTPStatusCode': 200, 
+    'HTTPHeaders': {'x-amzn-requestid': '516cee8c-24a4-11e8-aed2-49c862ed6013', 'content-type': 'text/xml', 'content-length': '623', 'date': 'Sat, 10 Mar 2018 20:47:59 GMT'}, 
+    'RetryAttempts': 0
+  }
+}

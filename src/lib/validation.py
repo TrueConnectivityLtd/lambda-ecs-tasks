@@ -37,7 +37,8 @@ def get_cfn_validator():
   Required('Instances', default=list()): All(list, Length(max=10)),
   Required('LaunchType', default='EC2'): All(str, In(['EC2','FARGATE'])),
   Required('PlatformVersion', default='1.0.0'): All(str),
-  Required('NetworkConfiguration', default={}): All(dict)
+  Required('NetworkConfiguration', default={}): All(dict),
+  Required('TargetGroupHealthCheck', default=''): All(str)
 }, extra=True)
 
 # Validation Helper

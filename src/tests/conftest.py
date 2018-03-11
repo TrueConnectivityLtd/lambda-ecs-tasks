@@ -1,6 +1,6 @@
 import pytest
 import time
-import copy
+from copy import deepcopy
 import mock
 import datetime
 from dateutil.tz import tzutc
@@ -97,26 +97,39 @@ def cfn_mgr():
     cfn_mgr.client = client
     yield cfn_mgr
 
-# Patched ecs_tasks module
+# Patched ELB client
 @pytest.fixture
-def ecs_tasks():
+def elb_client():
   with mock.patch('boto3.client') as client:
-    import ecs_tasks
+    client.describe_target_health.side_effect = [TARGET_HEALTH_INITIAL,TARGET_HEALTH_HEALTHY]
+    yield client
+
+# Patched task manager
+@pytest.fixture
+def ecs_client():
+  with mock.patch('boto3.client') as client:
     client.run_task.return_value = START_TASK_RESULT
     client.describe_tasks.return_value = STOPPED_TASK_RESULT
     client.describe_task_definition.side_effect = lambda taskDefinition: TASK_DEFINITION_RESULTS[taskDefinition]
     client.list_tasks.side_effect = [LIST_TASKS_RESULT]
     client.stop_task.side_effect = [STOPPED_TASK_RESULT]
-    task_mgr = EcsTaskManager()
-    task_mgr.client = client
-    ecs_tasks.task_mgr = task_mgr
-    yield ecs_tasks
+    yield client
+
+# Patched ecs_tasks module
+@pytest.fixture
+def ecs_tasks(elb_client, ecs_client):
+  import ecs_tasks
+  task_mgr = EcsTaskManager()
+  task_mgr.client = ecs_client
+  ecs_tasks.task_mgr = task_mgr
+  ecs_tasks.elb = elb_client
+  yield ecs_tasks
 
 # CFN Create Request
 @pytest.fixture
 def create_event():
   import ecs_tasks
-  return {
+  event = {
     'StackId': STACK_ID,
     'ResponseURL': 'https://cloudformation-custom-resource-response-uswest2.s3-us-west-2.amazonaws.com/arn%3Aaws%3Acloudformation%3Aus-west-2%3A429614120872%3Astack/intake-accelerator-dev/12947b30-d31a-11e6-93df-503acbd4dc61%7CMyLogGroup%7C720958cb-c5b7-4225-b12f-e7c5ab6c499b?AWSAccessKeyId=AKIAI4KYMPPRGIACET5Q&Expires=1483789136&Signature=GoZZ7Leg5xRsKq1hjU%2FO81oeJmw%3D',
     'ResourceProperties': {
@@ -133,11 +146,12 @@ def create_event():
     'Status': 'SUCCESS',
     'PhysicalResourceId': ecs_tasks.get_task_id(STACK_ID,LOGICAL_RESOURCE_ID)
   }
+  yield event
 
 # CFN Update Request
 @pytest.fixture
 def update_event():
-  event = create_event()
+  event = next(create_event())
   event['RequestType'] = 'Update'
   event['PhysicalResourceId'] = PHYSICAL_RESOURCE_ID
   event['OldResourceProperties'] = {
@@ -146,15 +160,15 @@ def update_event():
     'Cluster': CLUSTER_NAME,
     'TaskDefinition': OLD_TASK_DEFINITION_ARN
   }
-  return event
+  yield event
 
 # CFN Delete Request
 @pytest.fixture
 def delete_event():
-  event = create_event()
+  event = next(create_event())
   event['RequestType'] = 'Delete'
   event['PhysicalResourceId'] = PHYSICAL_RESOURCE_ID
-  return event
+  yield event
 
 # Generates each handler with corresponding event
 @pytest.fixture(
@@ -166,7 +180,7 @@ def delete_event():
   ]
 )
 def handlers(request):
-  yield(request.param[0],request.param[1]())
+  yield(request.param[0],next(request.param[1]()))
 
 # Generates Create and Update handlers with corresponding event
 @pytest.fixture(
@@ -177,7 +191,7 @@ def handlers(request):
   ]
 )
 def create_update_handlers(request):
-  yield(request.param[0],request.param[1]())
+  yield(request.param[0],next(request.param[1]()))
 
 # Check validation of required properties
 @pytest.fixture(params = ['Cluster','TaskDefinition'])
