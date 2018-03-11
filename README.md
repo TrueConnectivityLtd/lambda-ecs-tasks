@@ -82,7 +82,7 @@ Resources:
           - Sid: CheckTargetGroupStatus
             Effect: Allow
             Action:
-              - elbv2:CheckTargetHealth
+              - elasticloadbalancing:DescribeTargetHealth
             Resource:
               Ref: ApplicationTargetGroup
           - Sid: CheckStackStatus
