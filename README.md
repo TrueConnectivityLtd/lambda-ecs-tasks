@@ -14,6 +14,206 @@ When creating a Lambda function, you need to specify the correct module and corr
 - [`create_task`](src/create_task.py) - specify `create_task.handler` as the handler
 - [`check_task`](src/check_task.py) - specify `check_task.handler` as the handler
 
+## CloudFormation Usage
+
+The [`ecs_tasks`](src/ecs_tasks.py) function is designed to be called from a CloudFormation template as a custom resource.
+
+### Defining the Lambda Function
+
+The following CloudFormation template snippet demonstrates creating the Lambda function, along with supporting CloudWatch Logs and IAM role resources.
+
+> Note this snippet assumes you have an ECS Cluster resource called `ApplicationCluster` and a target group called `ApplicationTargetGroup`, which is used to constrain the IAM privileges assigned to the Lambda function.
+
+Note that the required permissions for this function include:
+
+- Describe CloudFormation stacks
+- Invoke Lambda function (required for long running tasks)
+- Describe ECS task definitions
+- Describe, run, start and stop ECS tasks
+- Publish logs to CloudWatch logs
+- Check ELB target group health (required if the `TargetGroupHealthCheck` property is configured)
+
+```
+...
+Resources:
+  EcsTaskRunnerLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${AWS::StackName}-ecsTasks
+      RetentionInDays: 30
+  EcsTaskRunner:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - EcsTaskRunnerLogGroup
+    Properties:
+      Description: 
+        Fn::Sub: ${AWS::StackName} ECS Task Runner
+      Handler: ecs_tasks.handler
+      MemorySize: 128
+      Runtime: python3.6
+      Timeout: 300
+      Role: 
+        Fn::Sub: ${EcsTaskRunnerRole.Arn}
+      FunctionName: 
+        Fn::Sub: ${AWS::StackName}-ecsTasks
+      Code:
+        S3Bucket: my-bucket
+        S3Key: ecsTasks/ecsTasks.zip
+        S3ObjectVersion: gyujkgVKoH.NVeeuLYTi_7n_NUburwa4
+  EcsTaskRunnerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action:
+            - sts:AssumeRole
+      Policies:
+      - PolicyName: ECSTaskRunnerPermissions
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Sid: CheckTargetGroupStatus
+            Effect: Allow
+            Action:
+              - elbv2:CheckTargetHealth
+            Resource:
+              Ref: ApplicationTargetGroup
+          - Sid: CheckStackStatus
+            Effect: Allow
+            Action:
+              - cloudformation:DescribeStacks
+            Resource:
+              Fn::Sub: arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/${AWS::StackId}
+          - Sid: InvokeSelf
+            Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource:
+              Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-ecsTasks
+          - Sid: TaskDefinition
+            Effect: Allow
+            Action:
+            - ecs:DescribeTaskDefinition
+            Resource: "*"
+          - Sid: EcsTasks
+            Effect: Allow
+            Action:
+            - ecs:DescribeTasks
+            - ecs:ListTasks
+            - ecs:RunTask
+            - ecs:StartTask
+            - ecs:StopTask
+            - ecs:DescribeContainerInstances
+            - ecs:ListContainerInstances
+            Resource: "*"
+            Condition:
+              ArnEquals:
+                ecs:cluster: 
+                  Fn::Sub: arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${ApplicationCluster}
+          - Sid: ManageLambdaLogs
+            Effect: Allow
+            Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: 
+              Fn::Sub: ${EcsTaskRunnerLogGroup.Arn}
+...
+...
+```
+
+### Creating Custom Resources that use the Lambda Function
+
+The following custom resource calls this Lambda function when the resource is created, updated or deleted:
+
+```
+  MigrateTask:
+    Type: Custom::ECSTask
+    Properties:
+      ServiceToken: "arn:aws:lambda:us-west-2:012345678901:function:dev-ecsTasks"
+      Cluster:
+        Ref: ApplicationCluster
+      TaskDefinition:
+        Ref: ApplicationTaskDefinition
+      Count: 1              
+      Timeout: 1800                     # The maximum amount of time to wait for the task to complete - defaults to 290 seconds
+      RunOnUpdate: True                 # Controls if the task should run for update operations - defaults to True
+      RunOnRollback: False              # Controls if the task should run in the event of a stack rollback - defaults to True
+      UpdateCriteria:                   # Specifies criteria to determine if a task update should run
+        - Container: app
+          EnvironmentKeys:              # List of environment keys to compare.  The task is only run if the environment key value has changed.
+            - DB_HOST
+      TargetGroupHealthCheck:           # Performs a health check of the specified target group ARN.  
+        Ref: ApplicationTargetGroup     # Task execution will begin once the target group has at least one healthy target
+      Overrides:                        # Task definition overrides
+        containerOverrides:
+          - name: app
+            command:
+              - manage.py
+              - migrate
+            environment:
+              - name SOME_VAR
+                value
+      Instances:              # Optional list of container instances to run the task on
+        - arn:aws:ecs:us-west-2:012345678901:container-instance/9d8698b5-5477-4b8b-bb63-dfd1e140b0d8
+```
+
+The following custom resource executes a task on Fargate.
+
+```
+  MigrateTask:
+    Type: Custom::ECSTask
+    Properties:
+      ServiceToken: "arn:aws:lambda:us-west-2:012345678901:function:dev-ecsTasks"
+      Cluster:
+        Ref: ApplicationCluster
+      TaskDefinition:
+        Ref: ApplicationTaskDefinition
+      Count: 1              
+      Timeout: 1800           
+      LaunchType: Fargate     # Required for FARGATE
+      NetworkConfiguration:   # Network configuration required for FARGATE
+        awsvpcConfiguration:
+          subnets:
+            - Fn::ImportValue:
+                Fn::Sub: ${VpcName}-${ApplicationSubnet}-subnet-a
+            - Fn::ImportValue:
+                Fn::Sub: ${VpcName}-${ApplicationSubnet}-subnet-b
+          securityGroups:
+            - Fn::ImportValue:
+                Fn::Sub: ${VpcName}-proxy-security-group
+            - Ref: ApplicationSecurityGroup
+            - Ref: ElasticsearchLoadBalancerSecurityGroup
+          assignPublicIp: ENABLED
+      Overrides:
+        containerOverrides:
+          - name: app
+            command:
+              - manage.py
+              - migrate
+```
+
+The following table describes the various properties:
+
+| Property       | Description                                                                                                                                                                                                                                                                                                                                                                                          | Required | Default Value |
+|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
+| ServiceToken   | The ARN of the Lambda function                                                                                                                                                                                                                                                                                                                                                                       | Yes      |               |
+| Cluster        | The name of the ECS Cluster to run the task on                                                                                                                                                                                                                                                                                                                                                       | Yes      |               |
+| TaskDefinition | The family, family:revision or full ARN of the ECS task definition that the ECS task is executed from.                                                                                                                                                                                                                                                                                               | Yes      |               |
+| Count          | The number of task instances to run.  If the Instances property is set, this count value is ignored as one task per instance will be run.  If set to 0, no tasks will be run (even if the Instances property is set).                                                                                                                                                                                | No       | 1             |
+| Timeout        | The maximum time in seconds to wait for the task to complete successfully.  If set to 0, the function will run the task and return immediately.                                                                                                                                                                                                                                                      | No       | 290           |
+| RunOnUpdate    | Controls if the task should be run for update to the resource.                                                                                                                                                                                                                                                                                                                                       | No       | True          |
+| RunOnRollback  | Controls if the task should be run if the stack is in a rollback state                                                                                                                                                                                                                                                                                                                               | No       | True          |
+| UpdateCriteria | Optional list of criteria used to determine if the task should be run for an update to the resource.   If specified, you must configure the `Container` property as the name of a container in the task definition, and specify a list of environment variable keys using the `EnvironmentKey` property.  If any of the specified environment variable values  have changed, then the task will run. | No       |               |
+| Overrides      | Optional task definition overrides to apply to the specified task definition.                                                                                                                                                                                                                                                                                                                        | No       |               |
+| Instances      | Optional list of ECS container instances to run the task on.  If specified, you must use the ARN of each ECS container instance.                                                                                                                                                                                                                                                                     | No       |               |
+| Triggers       | List of triggers that can be used to trigger updates to this resource, based upon changes to other resources.  This property is ignored by the Lambda function.                                                                                                                                                                                                                                      |          |               |
+
 ## Build Instructions
 
 This function requires Python 3.6.  Any dependencies need to defined in `src/requirements.txt`.  Note that you do not need to include `boto3`, as this is provided by AWS for Python Lambda functions.
@@ -143,166 +343,6 @@ $ make publish
 => Published to S3 URL: https://s3.amazonaws.com/012345678901-cfn-lambda/ecsTasks.zip
 => S3 Object Version: HJCxTQfAIRSS6bYi7C0TL41PNKMZLvhi
 ```
-
-## CloudFormation Usage
-
-The [`ecs_tasks`](src/ecs_tasks.py) function is designed to be called from a CloudFormation template as a custom resource.
-
-In general you should create a Lambda function per CloudFormation stack and then create custom resources that call the Lambda function, rather than create a shared Lambda function shared across multiple stacks.
-
-### Defining the Lambda Function
-
-The following CloudFormation template snippet demonstrates creating the Lambda function, along with supporting CloudWatch Logs and IAM role resources:
-
-> Note this snippet assumes you have an ECS Cluster resource called `ApplicationCluster`, which is used to constrain the IAM privileges assigned to the Lambda function.
-
-```
-...
-Resources:
-  EcsTaskRunnerLogGroup:
-    Type: AWS::Logs::LogGroup
-    DeletionPolicy: Delete
-    Properties:
-      LogGroupName:
-        Fn::Sub: /aws/lambda/${AWS::StackName}-ecsTasks
-      RetentionInDays: 30
-  EcsTaskRunner:
-    Type: AWS::Lambda::Function
-    DependsOn:
-      - EcsTaskRunnerLogGroup
-    Properties:
-      Description: 
-        Fn::Sub: ${AWS::StackName} ECS Task Runner
-      Handler: ecs_tasks.handler
-      MemorySize: 128
-      Runtime: python2.7
-      Timeout: 300
-      Role: 
-        Fn::Sub: ${EcsTaskRunnerRole.Arn}
-      FunctionName: 
-        Fn::Sub: ${AWS::StackName}-ecsTasks
-      Code:
-        S3Bucket: 
-          Fn::Sub: ${AWS::AccountId}-cfn-lambda
-        S3Key: ecsTasks.zip
-        S3ObjectVersion: gyujkgVKoH.NVeeuLYTi_7n_NUburwa4
-  EcsTaskRunnerRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service: lambda.amazonaws.com
-          Action:
-            - sts:AssumeRole
-      Policies:
-      - PolicyName: ECSPermissions
-        PolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-          - Sid: CheckStackStatus
-            Effect: Allow
-            Action:
-              - cloudformation:DescribeStacks
-            Resource:
-              Fn::Sub: arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/${AWS::StackId}
-          - Sid: InvokeSelf
-            Effect: Allow
-            Action:
-              - lambda:InvokeFunction
-            Resource:
-              Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-ecsTasks
-          - Sid: TaskDefinition
-            Effect: Allow
-            Action:
-            - ecs:DescribeTaskDefinition
-            Resource: "*"
-          - Sid: EcsTasks
-            Effect: Allow
-            Action:
-            - ecs:DescribeTasks
-            - ecs:ListTasks
-            - ecs:RunTask
-            - ecs:StartTask
-            - ecs:StopTask
-            - ecs:DescribeContainerInstances
-            - ecs:ListContainerInstances
-            Resource: "*"
-            Condition:
-              ArnEquals:
-                ecs:cluster: 
-                  Fn::Sub: arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${ApplicationCluster}
-          - Sid: ManageLambdaLogs
-            Effect: Allow
-            Action:
-            - logs:CreateLogGroup
-            - logs:CreateLogStream
-            - logs:PutLogEvents
-            - logs:PutRetentionPolicy
-            - logs:PutSubscriptionFilter
-            - logs:DescribeLogStreams
-            - logs:DeleteLogGroup
-            - logs:DeleteRetentionPolicy
-            - logs:DeleteSubscriptionFilter
-            Resource: 
-              Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-ecsTasks:*:*
-...
-...
-```
-
-### Creating Custom Resources that use the Lambda Function
-
-The following custom resource calls this Lambda function when the resource is created, updated or deleted:
-
-```
-  MigrateTask:
-    Type: Custom::ECSTask
-    Properties:
-      ServiceToken: "arn:aws:lambda:us-west-2:012345678901:function:dev-ecsTasks"
-      Cluster:
-        Ref: ApplicationCluster
-      TaskDefinition:
-        Ref: ApplicationTaskDefinition
-      Count: 1              
-      Timeout: 1800           # The maximum amount of time to wait for the task to complete - defaults to 290 seconds
-      RunOnUpdate: True       # Controls if the task should run for update operations - defaults to True
-      RunOnRollback: False    # Controls if the task should run in the event of a stack rollback - defaults to True
-      UpdateCriteria:         # Specifies criteria to determine if a task update should run
-        - Container: app
-          EnvironmentKeys:    # List of environment keys to compare.  The task is only run if the environment key value has changed.
-            - DB_HOST
-      PollInterval: 30        # How often to poll the status of a given task
-      Overrides:              # Task definition overrides
-        containerOverrides:
-          - name: app
-            command:
-              - manage.py
-              - migrate
-            environment:
-              - name SOME_VAR
-                value
-      Instances:              # Optional list of container instances to run the task on
-        - arn:aws:ecs:us-west-2:012345678901:container-instance/9d8698b5-5477-4b8b-bb63-dfd1e140b0d8
-
-```
-
-The following table describes the various properties:
-
-| Property       | Description                                                                                                                                                                                                                                                                                                                                                                                          | Required | Default Value |
-|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
-| ServiceToken   | The ARN of the Lambda function                                                                                                                                                                                                                                                                                                                                                                       | Yes      |               |
-| Cluster        | The name of the ECS Cluster to run the task on                                                                                                                                                                                                                                                                                                                                                       | Yes      |               |
-| TaskDefinition | The family, family:revision or full ARN of the ECS task definition that the ECS task is executed from.                                                                                                                                                                                                                                                                                               | Yes      |               |
-| Count          | The number of task instances to run.  If the Instances property is set, this count value is ignored as one task per instance will be run.  If set to 0, no tasks will be run (even if the Instances property is set).                                                                                                                                                                                | No       | 1             |
-| Timeout        | The maximum time in seconds to wait for the task to complete successfully.  If set to 0, the function will run the task and return immediately.                                                                                                                                                                                                                                                      | No       | 290           |
-| RunOnUpdate    | Controls if the task should be run for update to the resource.                                                                                                                                                                                                                                                                                                                                       | No       | True          |
-| RunOnRollback  | Controls if the task should be run if the stack is in a rollback state                                                                                                                                                                                                                                                                                                                               | No       | True          |
-| UpdateCriteria | Optional list of criteria used to determine if the task should be run for an update to the resource.   If specified, you must configure the `Container` property as the name of a container in the task definition, and specify a list of environment variable keys using the `EnvironmentKey` property.  If any of the specified environment variable values  have changed, then the task will run. | No       |               |
-| Overrides      | Optional task definition overrides to apply to the specified task definition.                                                                                                                                                                                                                                                                                                                        | No       |               |
-| Instances      | Optional list of ECS container instances to run the task on.  If specified, you must use the ARN of each ECS container instance.                                                                                                                                                                                                                                                                     | No       |               |
-| Triggers       | List of triggers that can be used to trigger updates to this resource, based upon changes to other resources.  This property is ignored by the Lambda function.                                                                                                                                                                                                                                      |          |               |
 
 # License
 

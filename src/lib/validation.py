@@ -32,7 +32,6 @@ def get_cfn_validator():
   })]),
   Required('RunOnRollback', default=True): All(Boolean()),
   Required('Timeout', default=290): All(Coerce(int), Range(min=0, max=3600)),
-  Required('PollInterval', default=10): All(Coerce(int), Range(min=10, max=60)),
   Required('Overrides', default=dict()): All(DictToString),
   Required('Instances', default=list()): All(list, Length(max=10)),
   Required('LaunchType', default='EC2'): All(str, In(['EC2','FARGATE'])),

@@ -201,14 +201,13 @@ def required_property(request):
 # Check validation of illegal property values
 @pytest.fixture(
   ids = [
-    'Count','RunOnUpdate','RunOnRollback','Timeout','PollInterval','Instances','Overrides'
+    'Count','RunOnUpdate','RunOnRollback','Timeout','Instances','Overrides'
   ], 
   params=[
     ('Count','50'),               # Maximum count = 10
     ('RunOnUpdate','never'),      # RunOnUpdate is a boolean
     ('RunOnRollback', 'always'),  # RunOnRollback is a boolean
     ('Timeout','4000'),           # Maximum timeout = 3600
-    ('PollInterval','300'),       # Maximum poll interval = 60
     ('Instances',range(0,11)),    # Maximum number of instances = 10
     ('Overrides',[])              # Overrides is of type dict
   ])
