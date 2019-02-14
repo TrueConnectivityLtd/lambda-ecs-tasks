@@ -29,8 +29,9 @@ def handler(event, context):
     task_definition=event['TaskDefinition'],
     overrides=event['Overrides'],
     count=event['Count'],
-    instances=event['Instances'],
-    started_by=event['StartedBy']
+    started_by=event['StartedBy'],
+    network_configuration=event['NetworkConfiguration'],
+    launch_type=event['LaunchType']
   )
   event['Tasks'] = result['tasks']
   event['Failures'] = result['failures']
