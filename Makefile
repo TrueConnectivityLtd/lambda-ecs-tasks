@@ -28,7 +28,7 @@ test:
 build:
 	@ ${INFO} "Building $(FUNCTION_NAME).zip..."
 	@ rm -rf src/vendor
-	@ cd src && pip install -t vendor/ -r requirements.txt --upgrade
+	@ cd src && pip3 install -t vendor/ -r requirements.txt --upgrade
 	@ mkdir -p build
 	@ cd src && zip -9 -r ../build/$(FUNCTION_NAME).zip * -x *.pyc -x requirements_test.txt -x tests/ -x tests/**\*
 	@ ${INFO} "Built build/$(FUNCTION_NAME).zip"

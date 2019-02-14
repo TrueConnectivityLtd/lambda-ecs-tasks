@@ -36,8 +36,9 @@ def start(task):
     task_definition=task['TaskDefinition'],
     overrides=task['Overrides'],
     count=task['Count'],
-    instances=task['Instances'],
-    started_by=task['StartedBy']
+    started_by=task['StartedBy'],
+    network_configuration=task['NetworkConfiguration'],
+    launch_type=task['LaunchType']
   )
 
 # Outputs JSON
