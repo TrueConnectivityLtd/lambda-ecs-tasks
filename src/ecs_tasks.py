@@ -90,6 +90,9 @@ def poll(task, remaining_time):
       raise EcsTaskTimeoutError(task['TaskResult']['tasks'], task['CreationTime'], task['Timeout'])
     if remaining_time() < (poll_interval + 5) * 1000:
       raise CfnLambdaExecutionTimeout(task)
+    if task['StartAndForget']:
+      task['TaskResult'] = describe_tasks(task['Cluster'], task_result)
+      return
     if not check_complete(task_result):
       log.info("Task(s) have not yet completed, checking again in %s seconds..." % poll_interval)
       time.sleep(poll_interval)
