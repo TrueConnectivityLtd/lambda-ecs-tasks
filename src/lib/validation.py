@@ -48,6 +48,7 @@ def get_cfn_validator():
     Required('Container'): Any(str, unicode),
     Required('EnvironmentKeys'): All(list)
   })]),
+  Required('StartAndForget', default=False): All(ToBool),
   Required('RunOnRollback', default=True): All(ToBool),
   Required('Timeout', default=290): All(ToInt, Range(min=0, max=3600)),
   Required('PollInterval', default=10): All(ToInt, Range(min=10, max=60)),
